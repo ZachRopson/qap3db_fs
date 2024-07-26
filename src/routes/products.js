@@ -1,19 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
-const pool = new Pool({
-    user: 'postgres',  
-    host: 'localhost',
-    database: 'qap3db_fs',  
-    password: 'postgres',  
-    port: 5432,
-});
+const productDAL = require('../dal/products');
 
 // GET all products and render index.ejs
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM products');
-        res.render('index', { products: result.rows });
+        const products = await productDAL.getAllProducts();
+        res.render('index', { products });
     } catch (err) {
         res.status(500).send(err);
     }
@@ -21,7 +14,6 @@ router.get('/', async (req, res) => {
 
 // GET form to add new product and render add_product.ejs
 router.get('/new', (req, res) => {
-    console.log('Accessed /products/new route');
     res.render('add_product');
 });
 
@@ -29,13 +21,9 @@ router.get('/new', (req, res) => {
 router.post('/', async (req, res) => {
     const { name, description, price, quantity } = req.body;
     try {
-        await pool.query(
-            'INSERT INTO products (name, description, price, quantity) VALUES ($1, $2, $3, $4)',
-            [name, description, price, quantity]
-        );
+        await productDAL.addProduct(name, description, price, quantity);
         res.redirect('/products');
     } catch (err) {
-        console.error(err);
         res.status(500).send(err);
     }
 });
@@ -44,8 +32,8 @@ router.post('/', async (req, res) => {
 router.get('/:id/edit', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-        res.render('edit_product', { product: result.rows[0] });
+        const product = await productDAL.getProductById(id);
+        res.render('edit_product', { product });
     } catch (err) {
         res.status(500).send(err);
     }
@@ -56,10 +44,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { name, description, price, quantity } = req.body;
     try {
-        await pool.query(
-            'UPDATE products SET name = $1, description = $2, price = $3, quantity = $4 WHERE id = $5',
-            [name, description, price, quantity, id]
-        );
+        await productDAL.updateProduct(id, name, description, price, quantity);
         res.redirect('/products');
     } catch (err) {
         res.status(500).send(err);
@@ -70,7 +55,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await pool.query('DELETE FROM products WHERE id = $1', [id]);
+        await productDAL.deleteProduct(id);
         res.redirect('/products');
     } catch (err) {
         res.status(500).send(err);
@@ -78,3 +63,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
